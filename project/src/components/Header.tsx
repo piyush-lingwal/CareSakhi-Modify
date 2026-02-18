@@ -60,7 +60,7 @@ const Header = () => {
                 Partner with Us
               </a>
               <a
-                href="https://github.com/piyush-lingwal/Caresakhi/releases/download/v2.1/CareSakhi.Partner.2.1.apk"
+                href="https://github.com/piyush-lingwal/Partner/releases/download/Partner_Apk/CareSakhi-Partner.3.1.apk"
                 download="CareSakhi-App.apk"
                 className="flex items-center space-x-2 bg-pink-600 text-white px-3 py-2 rounded-full font-medium text-sm hover:bg-pink-700 transition-all duration-300"
               >
@@ -198,8 +198,8 @@ const Header = () => {
                     <Link to="/register" onClick={() => setIsMenuOpen(false)} className="flex-1 text-center px-4 py-3 bg-pink-600 text-white rounded-lg font-medium">Sign Up</Link>
                   </div>
                 )}
-                <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center space-x-2 border border-pink-200 text-pink-700 px-4 py-3 rounded-lg font-medium hover:bg-pink-50 mb-3"><span>Partner with Us</span></a>
-                <a href="https://github.com/piyush-lingwal/Caresakhi/releases/download/v2.1/CareSakhi.Partner.2.1.apk" download="CareSakhiPartner.apk" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center space-x-2 bg-pink-600 text-white px-4 py-3 rounded-lg font-medium"><Download className="w-5 h-5" /> <span>Download App</span></a>
+                <a href="https://caresakhi-partner.vercel.app/" target="_blank" rel="noopener noreferrer" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center space-x-2 border border-pink-200 text-pink-700 px-4 py-3 rounded-lg font-medium hover:bg-pink-50 mb-3"><span>Partner with Us</span></a>
+                <a href="https://github.com/piyush-lingwal/Partner/releases/download/Partner_Apk/CareSakhi-Partner.3.1.apk" download="CareSakhiPartner.apk" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center space-x-2 bg-pink-600 text-white px-4 py-3 rounded-lg font-medium"><Download className="w-5 h-5" /> <span>Download App</span></a>
               </div>
             </nav>
           </div>
