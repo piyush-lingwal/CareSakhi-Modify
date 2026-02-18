@@ -52,7 +52,7 @@ const Header = () => {
           <div className="flex items-center space-x-1 sm:space-x-2">
             <div className="hidden md:flex items-center space-x-2">
               <a
-                href="http://localhost:5173"
+                href="https://caresakhi-partner.vercel.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden md:flex items-center space-x-2 border border-pink-200 text-pink-700 px-4 py-2 rounded-full font-medium text-sm hover:bg-pink-50 transition-colors"
