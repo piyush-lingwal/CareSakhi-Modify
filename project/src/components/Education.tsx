@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf, DollarSign, Clock, Users, ChevronRight, Play } from 'lucide-react';
 
@@ -12,7 +12,7 @@ const Education = () => {
       stat: '11 billion',
       description: 'disposable products are thrown away annually',
       details: 'One menstrual cup can replace up to 2,400 tampons and pads over its lifetime, significantly reducing environmental waste.',
-      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared' // Replace with your video link
+      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared'
     },
     {
       icon: DollarSign,
@@ -20,7 +20,7 @@ const Education = () => {
       stat: '₹1,50,000+',
       description: 'saved over 10 years with reusable products',
       details: 'While the initial investment is higher, reusable products pay for themselves within the first year of use.',
-      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared' // Replace with your video link
+      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared'
     },
     {
       icon: Clock,
@@ -28,7 +28,7 @@ const Education = () => {
       stat: '12 hours',
       description: 'of continuous protection with cups',
       details: 'Enjoy longer-lasting protection without frequent changes, perfect for busy lifestyles and overnight use.',
-      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared' // Replace with your video link
+      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared'
     },
     {
       icon: Users,
@@ -36,31 +36,34 @@ const Education = () => {
       stat: '99.9%',
       description: 'of users report increased comfort',
       details: 'Made from medical-grade materials, our products are safer and more comfortable than traditional options.',
-      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared' // Replace with your video link
+      youtubeLink: 'https://youtu.be/4gfr769T8KQ?feature=shared'
     }
   ];
 
   const educationalContent = [
     {
       title: 'How Menstrual Cups Work',
-      duration: '3 min read',
-      preview: 'Learn about the science behind menstrual cups and why they\'re revolutionizing period care.',
+      duration: '3 min',
+      preview: 'Learn the science behind menstrual cups and why they\'re revolutionizing period care.',
       image: 'https://media.post.rvohealth.io/wp-content/uploads/2019/07/Menstrual_Cup_732x549-thumbnail.jpg',
-      slug: 'cup-guide'
+      slug: 'cup-guide',
+      tag: 'Guide'
     },
     {
       title: 'Sizing Guide',
-      duration: '2 min read',
+      duration: '2 min',
       preview: 'Find your perfect fit with our comprehensive sizing guide and recommendations.',
       image: 'https://cdn.shopify.com/s/files/1/0485/4290/8573/files/2_fddbb52e-daba-4564-951e-d99d0afc49a0.jpg?v=1736229184',
-      slug: 'sizing'
+      slug: 'sizing',
+      tag: 'Sizing'
     },
     {
       title: 'Care & Maintenance',
-      duration: '4 min read',
-      preview: 'Simple steps to keep your reusable products clean, safe, and long-lasting.',
+      duration: '4 min',
+      preview: 'Simple steps to keep your reusable products clean, safe, and lasting years.',
       image: 'https://www.orangehealthcare.in/wp-content/uploads/2023/06/Cara-Menghitung-Masa-Subur-1024x576-1.jpg',
-      slug: 'care'
+      slug: 'care',
+      tag: 'Care'
     }
   ];
 
@@ -93,7 +96,7 @@ const Education = () => {
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full group-hover:scale-110 transition-transform duration-300">
                     <IconComponent className="w-8 h-8 text-emerald-600" />
                   </div>
-                  
+
                   <div>
                     <div className="text-3xl font-bold text-emerald-600 mb-2">
                       {benefit.stat}
@@ -122,7 +125,7 @@ const Education = () => {
                 <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                   {benefits[activeTab].details}
                 </p>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -162,42 +165,45 @@ const Education = () => {
           </div>
         </div>
 
-        {/* Educational Resources */}
+        {/* ─── Learn & Explore (Redesigned) ─── */}
         <div>
-          <h3 className="text-3xl font-bold text-center mb-12">
+          <h3 className="text-3xl font-bold text-center mb-10">
             <span className="bg-gradient-to-r from-emerald-600 to-orange-600 bg-clip-text text-transparent">
-              Educational Resources
+              Learn & Explore
             </span>
           </h3>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             {educationalContent.map((content) => (
               <Link
                 key={content.slug}
                 to={`/education/${content.slug}`}
-                className="group block bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1"
+                className="group block bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 hover:border-emerald-200 transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
               >
                 <div className="relative overflow-hidden">
                   <img
                     src={content.image}
                     alt={content.title}
-                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-40 sm:h-48 object-cover group-hover:scale-110 transition-transform duration-700"
                   />
-                  <div className="absolute top-4 right-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium text-gray-700">
+                  <div className="absolute top-3 left-3">
+                    <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                      {content.tag}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-600">
                     {content.duration}
                   </div>
                 </div>
 
-                <div className="p-6">
-                  <h4 className="text-xl font-semibold text-gray-800 mb-3 group-hover:text-emerald-600 transition-colors">
+                <div className="p-4 sm:p-5">
+                  <h4 className="text-base sm:text-lg font-bold text-gray-800 mb-2 group-hover:text-emerald-600 transition-colors">
                     {content.title}
                   </h4>
-                  <p className="text-gray-600 mb-4 leading-relaxed line-clamp-2">
+                  <p className="text-sm text-gray-500 mb-3 leading-relaxed line-clamp-2">
                     {content.preview}
                   </p>
-                  <div
-                    className="flex items-center space-x-2 text-emerald-600 font-semibold group-hover:space-x-3 transition-all"
-                  >
+                  <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-sm group-hover:gap-2.5 transition-all">
                     <span>Read More</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
@@ -212,4 +218,3 @@ const Education = () => {
 };
 
 export default Education;
-

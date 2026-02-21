@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Testimonials = () => {
@@ -90,34 +90,34 @@ const Testimonials = () => {
     setIsAutoPlaying(false);
   };
 
-  const goToTestimonial = (index) => {
+  const goToTestimonial = (index: number) => {
     setCurrentIndex(index);
     setIsAutoPlaying(false);
   };
 
   return (
-    <section className="py-20 bg-gradient-to-br from-emerald-50 to-orange-50">
+    <section className="py-12 sm:py-20 bg-gradient-to-br from-emerald-50 to-orange-50">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
             <span className="bg-gradient-to-r from-emerald-600 to-orange-600 bg-clip-text text-transparent">
               What Our Community Says
             </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-base sm:text-xl text-gray-600 max-w-3xl mx-auto">
             Join thousands of women who've made the switch and transformed their period experience.
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 mb-10 sm:mb-16">
           {stats.map((stat, index) => (
             <div key={index} className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-emerald-600 mb-2">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-emerald-600 mb-1 sm:mb-2">
                 {stat.number}
               </div>
-              <div className="text-gray-600 font-medium">
+              <div className="text-gray-600 font-medium text-sm">
                 {stat.label}
               </div>
             </div>
@@ -125,9 +125,9 @@ const Testimonials = () => {
         </div>
 
         {/* Main Testimonial */}
-        <div className="max-w-4xl mx-auto mb-12">
+        <div className="max-w-4xl mx-auto mb-8 sm:mb-12">
           <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div className="p-8 lg:p-12">
+            <div className="p-6 sm:p-8 lg:p-12">
               <div className="flex flex-col lg:flex-row items-center space-y-8 lg:space-y-0 lg:space-x-12">
                 {/* Customer Image */}
                 <div className="flex-shrink-0">
@@ -150,8 +150,8 @@ const Testimonials = () => {
                 {/* Testimonial Content */}
                 <div className="flex-1 text-center lg:text-left">
                   <Quote className="w-8 h-8 text-emerald-200 mb-4 mx-auto lg:mx-0" />
-                  
-                  <blockquote className="text-xl lg:text-2xl text-gray-800 leading-relaxed mb-6 font-light">
+
+                  <blockquote className="text-base sm:text-xl lg:text-2xl text-gray-800 leading-relaxed mb-4 sm:mb-6 font-light">
                     "{testimonials[currentIndex].text}"
                   </blockquote>
 
@@ -161,7 +161,7 @@ const Testimonials = () => {
                         <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                       ))}
                     </div>
-                    
+
                     <div className="text-lg font-semibold text-gray-800">
                       {testimonials[currentIndex].name}, {testimonials[currentIndex].age}
                     </div>
@@ -179,49 +179,47 @@ const Testimonials = () => {
             {/* Navigation Buttons */}
             <button
               onClick={prevTestimonial}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-3 hover:shadow-xl transition-all duration-300 hover:scale-110"
+              className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 sm:p-3 hover:shadow-xl transition-all duration-300 hover:scale-110 hidden sm:block"
             >
               <ChevronLeft className="w-6 h-6 text-gray-600" />
             </button>
-            
+
             <button
               onClick={nextTestimonial}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-3 hover:shadow-xl transition-all duration-300 hover:scale-110"
+              className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 sm:p-3 hover:shadow-xl transition-all duration-300 hover:scale-110 hidden sm:block"
             >
               <ChevronRight className="w-6 h-6 text-gray-600" />
             </button>
           </div>
 
-          {/* Dots Indicator */}
-          <div className="flex justify-center space-x-3 mt-8">
+          <div className="flex justify-center items-center gap-3 mt-6 sm:mt-8">
             {testimonials.map((_, index) => (
-              <button
+              <div
                 key={index}
                 onClick={() => goToTestimonial(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? 'bg-emerald-600 w-8'
-                    : 'bg-gray-300 hover:bg-gray-400'
-                }`}
+                className={`w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-300 ${index === currentIndex
+                  ? 'bg-emerald-600 scale-[1.4] shadow-lg'
+                  : 'bg-gray-300 hover:bg-gray-400 hover:scale-125'
+                  }`}
               />
             ))}
           </div>
         </div>
 
         {/* Additional Testimonials Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.slice(0, 3).map((testimonial, index) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pb-16 sm:pb-0">
+          {testimonials.slice(0, 3).map((testimonial) => (
             <div key={testimonial.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="flex items-center space-x-1 mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
-              
+
               <p className="text-gray-700 mb-4 leading-relaxed">
                 "{testimonial.text.slice(0, 120)}..."
               </p>
-              
+
               <div className="flex items-center space-x-3">
                 <img
                   src={testimonial.image}

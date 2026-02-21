@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, User, ArrowRight, Search, Tag } from 'lucide-react';
+import { useBlogPosts } from '../hooks/useBlogPosts';
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const { posts: blogPosts, loading } = useBlogPosts();
 
   const categories = [
     { id: 'all', name: 'All Posts' },
@@ -14,96 +16,23 @@ const Blog = () => {
     { id: 'lifestyle', name: 'Lifestyle' }
   ];
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'The Complete Guide to Menstrual Cups: Everything You Need to Know',
-      slug: 'complete-guide-menstrual-cups',
-      excerpt: 'Discover everything about menstrual cups, from choosing the right size to proper care and maintenance.',
-      content: 'Full article content here...',
-      author: 'Dr. Sarah Johnson',
-      date: '2024-01-15',
-      category: 'education',
-      image: 'https://www.bemewoman.com/cdn/shop/articles/cuph1_099fb011-0121-441a-85aa-7150e207a72c_1200x1200.png?v=1744103693',
-      readTime: '8 min read',
-      featured: true
-    },
-    {
-      id: 2,
-      title: 'Sustainable Periods: How to Reduce Your Environmental Impact',
-      slug: 'sustainable-periods-environmental-impact',
-      excerpt: 'Learn how switching to reusable menstrual products can significantly reduce your carbon footprint.',
-      content: 'Full article content here...',
-      author: 'Emily Chen',
-      date: '2024-01-12',
-      category: 'sustainability',
-      image: 'https://cdn.shopify.com/s/files/1/1953/3723/files/2_Small_Changes_Big_Impact__Your_Guide_to_Zero-Waste_Swaps.png?v=1743171692',
-      readTime: '6 min read',
-      featured: false
-    },
-    {
-      id: 3,
-      title: 'Period Pain Management: Natural Remedies That Actually Work',
-      slug: 'period-pain-management-natural-remedies',
-      excerpt: 'Explore effective natural methods to manage menstrual pain and discomfort.',
-      content: 'Full article content here...',
-      author: 'Dr. Maria Rodriguez',
-      date: '2024-01-10',
-      category: 'health',
-      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoivJqJ5wr0bsjxrh06wSNyZl5yhd5JwngTQ&s',
-      readTime: '5 min read',
-      featured: false
-    },
-    {
-      id: 4,
-      title: 'Breaking Period Taboos: Creating Open Conversations',
-      slug: 'breaking-period-taboos-open-conversations',
-      excerpt: 'How to start meaningful conversations about menstruation and break down harmful stigmas.',
-      content: 'Full article content here...',
-      author: 'Lisa Thompson',
-      date: '2024-01-08',
-      category: 'lifestyle',
-      image: 'https://cdn.shopify.com/s/files/1/0065/0703/6757/files/3_3c7efe9d-c14e-49eb-ab4d-f54769d61cb9_600x600.jpg?v=1670844914',
-      readTime: '7 min read',
-      featured: false
-    },
-    {
-      id: 5,
-      title: 'Traveling with Your Period: Tips for Stress-Free Journeys',
-      slug: 'traveling-with-period-stress-free-tips',
-      excerpt: 'Essential tips and products for managing your period while traveling.',
-      content: 'Full article content here...',
-      author: 'Amanda Wilson',
-      date: '2024-01-05',
-      category: 'lifestyle',
-      image: 'https://storage.googleapis.com/stateless-www-justwravel-com/2024/06/28b5f226-period-hacks-while-traveling-810x528.png',
-      readTime: '4 min read',
-      featured: false
-    },
-    {
-      id: 6,
-      title: 'Understanding Your Menstrual Cycle: A Comprehensive Guide',
-      slug: 'understanding-menstrual-cycle-comprehensive-guide',
-      excerpt: 'Learn about the phases of your menstrual cycle and what\'s normal for your body.',
-      content: 'Full article content here...',
-      author: 'Dr. Sarah Johnson',
-      date: '2024-01-03',
-      category: 'health',
-      image: 'https://nimaaya.com/wp-content/uploads/2024/05/Periods-Symptoms.png',
-      readTime: '10 min read',
-      featured: false
-    }
-  ];
-
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
+      post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const featuredPost = blogPosts.find(post => post.featured);
   const regularPosts = filteredPosts.filter(post => !post.featured);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -119,7 +48,7 @@ const Blog = () => {
             <p className="text-xl text-gray-600 mb-8">
               Expert insights, tips, and stories about menstrual health, sustainability, and empowerment.
             </p>
-            
+
             {/* Search Bar */}
             <div className="max-w-md mx-auto relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -144,11 +73,10 @@ const Blog = () => {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
-                    selectedCategory === category.id
-                      ? 'bg-emerald-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
-                  }`}
+                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${selectedCategory === category.id
+                    ? 'bg-emerald-600 text-white shadow-lg'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+                    }`}
                 >
                   {category.name}
                 </button>
@@ -179,15 +107,15 @@ const Blog = () => {
                       </span>
                       <span className="text-sm text-gray-500">{featuredPost.readTime}</span>
                     </div>
-                    
+
                     <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-emerald-600 transition-colors">
                       {featuredPost.title}
                     </h3>
-                    
+
                     <p className="text-gray-600 mb-6 leading-relaxed">
                       {featuredPost.excerpt}
                     </p>
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-2">
@@ -199,7 +127,7 @@ const Blog = () => {
                           <span>{new Date(featuredPost.date).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 text-emerald-600 font-semibold group-hover:space-x-3 transition-all">
                         <span>Read More</span>
                         <ArrowRight className="w-4 h-4" />
@@ -216,7 +144,7 @@ const Blog = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-8">
               {selectedCategory === 'all' ? 'Latest Articles' : `${categories.find(c => c.id === selectedCategory)?.name} Articles`}
             </h2>
-            
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {regularPosts.map(post => (
                 <Link
@@ -242,16 +170,16 @@ const Blog = () => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-3 group-hover:text-emerald-600 transition-colors line-clamp-2">
                       {post.title}
                     </h3>
-                    
+
                     <p className="text-gray-600 mb-4 text-sm leading-relaxed line-clamp-3">
                       {post.excerpt}
                     </p>
-                    
+
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4" />

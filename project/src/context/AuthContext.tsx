@@ -1,140 +1,153 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-interface User {
-  id: number;
+export interface User {
+  id: string;
   name: string;
   email: string;
   avatar?: string;
+  phone?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
   isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<'success' | 'exists' | 'error'>;
+  logout: () => Promise<void>;
+  updateProfile: (data: Partial<{ full_name: string; phone: string; avatar_url: string }>) => Promise<boolean>;
+  verifyOtp: (email: string, token: string) => Promise<boolean>;
+  resendOtp: (email: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+function mapSupabaseUser(su: SupabaseUser, profile?: { full_name?: string; phone?: string; avatar_url?: string }): User {
+  return {
+    id: su.id,
+    name: profile?.full_name || su.user_metadata?.full_name || su.user_metadata?.name || '',
+    email: su.email || '',
+    avatar: profile?.avatar_url || su.user_metadata?.avatar_url || '',
+    phone: profile?.phone || '',
+  };
+}
 
-  // Mock users for frontend-only functionality
-  const mockUsers = [
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah@example.com',
-      password: 'password123',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150'
-    },
-    {
-      id: 2,
-      name: 'Meera Gupta',
-      email: 'meera@caresakhi.com',
-      password: 'password123',
-      avatar: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg?auto=compress&cs=tinysrgb&w=150'
-    },
-    {
-      id: 3,
-      name: 'Priya Sharma',
-      email: 'priya@example.com',
-      password: 'password123',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150'
-    }
-  ];
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch profile data from profiles table
+  const fetchProfile = async (supabaseUser: SupabaseUser) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, phone, avatar_url')
+      .eq('id', supabaseUser.id)
+      .single();
+    return data;
+  };
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user);
+        setUser(mapSupabaseUser(session.user, profile || undefined));
+      }
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const profile = await fetchProfile(session.user);
+          setUser(mapSupabaseUser(session.user, profile || undefined));
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    try {
-      const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-      
-      if (foundUser) {
-        const userSession = {
-          id: foundUser.id,
-          name: foundUser.name,
-          email: foundUser.email,
-          avatar: foundUser.avatar
-        };
-        
-        setUser(userSession);
-        localStorage.setItem('currentUser', JSON.stringify(userSession));
-        setIsLoading(false);
-        return true;
-      } else {
-        setIsLoading(false);
-        return false;
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      setIsLoading(false);
-      return false;
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setIsLoading(false);
+    return !error;
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string): Promise<'success' | 'exists' | 'error'> => {
     setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    try {
-      // Check if user already exists
-      const existingUser = mockUsers.find(u => u.email === email);
-      if (existingUser) {
-        setIsLoading(false);
-        return false;
-      }
-      
-      // Create new user
-      const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150'
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-      setIsLoading(false);
-      return true;
-    } catch (error) {
-      console.error('Registration error:', error);
-      setIsLoading(false);
-      return false;
-    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name },
+      },
+    });
+    setIsLoading(false);
+    if (error) return 'error';
+    // Supabase returns a fake user with empty identities for already-registered unconfirmed emails
+    if (data.user && data.user.identities && data.user.identities.length === 0) return 'exists';
+    return 'success';
   };
 
-  const logout = () => {
-    localStorage.removeItem('currentUser');
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
+  const updateProfile = async (data: Partial<{ full_name: string; phone: string; avatar_url: string }>): Promise<boolean> => {
+    if (!user) return false;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...data, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (!error) {
+      // Refresh user state
+      const { data: { user: su } } = await supabase.auth.getUser();
+      if (su) {
+        const profile = await fetchProfile(su);
+        setUser(mapSupabaseUser(su, profile || undefined));
+      }
+    }
+    return !error;
+  };
+
+  const verifyOtp = async (email: string, token: string): Promise<boolean> => {
+    setIsLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+    setIsLoading(false);
+    return !error;
+  };
+
+  const resendOtp = async (email: string): Promise<boolean> => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+    return !error;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, verifyOtp, resendOtp }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}

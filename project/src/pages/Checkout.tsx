@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { CreditCard, Lock, Truck, MapPin, Coins } from 'lucide-react';
-import { useCart } from '../context/CartContext';
+import { useCart, CartItem } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { walletAPI } from '../services/api';
+import { useWallet } from '../hooks/useWallet';
+import { useOrders } from '../hooks/useOrders';
 
 const Checkout = () => {
-  const { state, clearCart } = useCart();
+  const { items, clearCart } = useCart();
   const { user, isLoading } = useAuth();
+  const { wallet, deductCoins } = useWallet();
+  const { createOrder } = useOrders();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Redirect to login if user is not logged in
-  if (!isLoading && !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
 
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -24,7 +22,7 @@ const Checkout = () => {
     city: '',
     state: '',
     zipCode: '',
-    country: 'United States',
+    country: 'India',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
@@ -32,24 +30,18 @@ const Checkout = () => {
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [walletData, setWalletData] = useState({ balance: 250, coins: 125 });
   const [coinsToUse, setCoinsToUse] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('card');
 
-  React.useEffect(() => {
-    if (user) {
-      loadWalletData();
-    }
-  }, [user]);
+  // Redirect to login if user is not logged in
+  if (!isLoading && !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-  const loadWalletData = async () => {
-    try {
-      const data = await walletAPI.getBalance();
-      setWalletData(data);
-    } catch (error) {
-      console.error('Failed to load wallet data:', error);
-    }
-  };
+  // Redirect to cart if cart is empty
+  if (items.length === 0) {
+    return <Navigate to="/cart" replace />;
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -62,24 +54,57 @@ const Checkout = () => {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const subtotal = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
+      const tax = subtotal * 0.18;
+      const coinDiscount = coinsToUse;
+      const total = Math.max(0, subtotal + tax - coinDiscount);
 
-    // Generate order ID
-    const orderId = Math.random().toString(36).substr(2, 9).toUpperCase();
-    
-    // Clear cart and redirect to confirmation
-    clearCart();
-    navigate(`/order-confirmation/${orderId}`);
+      const orderId = await createOrder({
+        payment_method: paymentMethod,
+        subtotal,
+        discount: coinDiscount,
+        total,
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+        },
+        items: items.map((item: CartItem) => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_image: item.image,
+          size: item.size || '',
+          color: item.color || '',
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      });
+
+      if (orderId) {
+        // Deduct coins from wallet if used
+        if (coinDiscount > 0) {
+          await deductCoins(coinDiscount, `Coins redeemed on order ${orderId}`);
+        }
+        clearCart();
+        navigate(`/order-confirmation/${orderId}`);
+      } else {
+        alert('Failed to place order. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  if (state.items.length === 0) {
-    navigate('/cart');
-    return null;
-  }
-
-  const subtotal = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08;
+  const subtotal = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
+  const tax = subtotal * 0.18;
   const coinDiscount = coinsToUse;
   const total = Math.max(0, subtotal + tax - coinDiscount);
 
@@ -99,7 +124,7 @@ const Checkout = () => {
                     <MapPin className="w-5 h-5 mr-2 text-emerald-600" />
                     Contact Information
                   </h2>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -123,7 +148,7 @@ const Checkout = () => {
                     <Truck className="w-5 h-5 mr-2 text-emerald-600" />
                     Shipping Address
                   </h2>
-                  
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -181,18 +206,47 @@ const Checkout = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         State
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
+                      >
+                        <option value="">Select State</option>
+                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                        <option value="Assam">Assam</option>
+                        <option value="Bihar">Bihar</option>
+                        <option value="Chhattisgarh">Chhattisgarh</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Goa">Goa</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Haryana">Haryana</option>
+                        <option value="Himachal Pradesh">Himachal Pradesh</option>
+                        <option value="Jharkhand">Jharkhand</option>
+                        <option value="Karnataka">Karnataka</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Madhya Pradesh">Madhya Pradesh</option>
+                        <option value="Maharashtra">Maharashtra</option>
+                        <option value="Manipur">Manipur</option>
+                        <option value="Meghalaya">Meghalaya</option>
+                        <option value="Mizoram">Mizoram</option>
+                        <option value="Nagaland">Nagaland</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="Punjab">Punjab</option>
+                        <option value="Rajasthan">Rajasthan</option>
+                        <option value="Sikkim">Sikkim</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Telangana">Telangana</option>
+                        <option value="Tripura">Tripura</option>
+                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                        <option value="Uttarakhand">Uttarakhand</option>
+                        <option value="West Bengal">West Bengal</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ZIP Code
+                        PIN Code
                       </label>
                       <input
                         type="text"
@@ -200,6 +254,9 @@ const Checkout = () => {
                         value={formData.zipCode}
                         onChange={handleInputChange}
                         required
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        placeholder="110001"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -213,9 +270,7 @@ const Checkout = () => {
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
-                        <option value="United States">United States</option>
-                        <option value="Canada">Canada</option>
-                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="India">India</option>
                       </select>
                     </div>
                   </div>
@@ -227,7 +282,7 @@ const Checkout = () => {
                     <CreditCard className="w-5 h-5 mr-2 text-emerald-600" />
                     Payment Information
                   </h2>
-                  
+
                   {/* Payment Method Selection */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -237,11 +292,10 @@ const Checkout = () => {
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('card')}
-                        className={`p-4 border-2 rounded-lg transition-all ${
-                          paymentMethod === 'card'
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                        className={`p-4 border-2 rounded-lg transition-all ${paymentMethod === 'card'
+                          ? 'border-emerald-500 bg-emerald-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                          }`}
                       >
                         <CreditCard className="w-6 h-6 mx-auto mb-2 text-gray-600" />
                         <div className="text-sm font-medium">Credit Card</div>
@@ -249,18 +303,17 @@ const Checkout = () => {
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('wallet')}
-                        className={`p-4 border-2 rounded-lg transition-all ${
-                          paymentMethod === 'wallet'
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                        className={`p-4 border-2 rounded-lg transition-all ${paymentMethod === 'wallet'
+                          ? 'border-emerald-500 bg-emerald-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                          }`}
                       >
                         <Coins className="w-6 h-6 mx-auto mb-2 text-gray-600" />
                         <div className="text-sm font-medium">CareSakhi Wallet</div>
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -272,7 +325,7 @@ const Checkout = () => {
                         value={formData.cardNumber}
                         onChange={handleInputChange}
                         placeholder="1234 5678 9012 3456"
-                        required
+                        required={paymentMethod === 'card'}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -287,7 +340,7 @@ const Checkout = () => {
                           value={formData.expiryDate}
                           onChange={handleInputChange}
                           placeholder="MM/YY"
-                          required
+                          required={paymentMethod === 'card'}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
@@ -301,7 +354,7 @@ const Checkout = () => {
                           value={formData.cvv}
                           onChange={handleInputChange}
                           placeholder="123"
-                          required
+                          required={paymentMethod === 'card'}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
@@ -315,7 +368,7 @@ const Checkout = () => {
                         name="nameOnCard"
                         value={formData.nameOnCard}
                         onChange={handleInputChange}
-                        required
+                        required={paymentMethod === 'card'}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -334,10 +387,10 @@ const Checkout = () => {
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-lg p-6 sticky top-24">
                   <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
-                  
+
                   {/* Order Items */}
                   <div className="space-y-4 mb-6">
-                    {state.items.map((item, index) => (
+                    {items.map((item: CartItem, index: number) => (
                       <div key={`${item.id}-${item.size}-${item.color}-${index}`} className="flex items-center space-x-3">
                         <img
                           src={item.image}
@@ -371,7 +424,7 @@ const Checkout = () => {
                       <span className="font-semibold text-green-600">Free</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tax</span>
+                      <span className="text-gray-600">GST (18%)</span>
                       <span className="font-semibold">₹{tax.toFixed(2)}</span>
                     </div>
                     {coinsToUse > 0 && (
@@ -389,20 +442,20 @@ const Checkout = () => {
                   </div>
 
                   {/* Coin Redemption */}
-                  {walletData.coins > 0 && (
+                  {wallet.coins > 0 && (
                     <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center space-x-2 mb-3">
                         <Coins className="w-5 h-5 text-yellow-600" />
                         <span className="font-semibold text-gray-800">Use CareSakhi Coins</span>
                       </div>
                       <p className="text-sm text-gray-600 mb-3">
-                        You have {walletData.coins} coins available (₹{walletData.coins} value) • 1 coin = ₹1
+                        You have {wallet.coins} coins available (₹{wallet.coins} value) • 1 coin = ₹1
                       </p>
                       <div className="flex items-center space-x-3">
                         <input
                           type="number"
                           min="0"
-                          max={Math.min(walletData.coins, Math.floor(subtotal + tax))}
+                          max={Math.min(wallet.coins, Math.floor(subtotal + tax))}
                           value={coinsToUse}
                           onChange={(e) => setCoinsToUse(parseInt(e.target.value) || 0)}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -410,14 +463,14 @@ const Checkout = () => {
                         />
                         <button
                           type="button"
-                          onClick={() => setCoinsToUse(Math.min(walletData.coins, Math.floor(subtotal + tax)))}
+                          onClick={() => setCoinsToUse(Math.min(wallet.coins, Math.floor(subtotal + tax)))}
                           className="bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors"
                         >
                           Use All
                         </button>
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        Maximum {Math.min(walletData.coins, Math.floor(subtotal + tax))} coins can be used for this order
+                        Maximum {Math.min(wallet.coins, Math.floor(subtotal + tax))} coins can be used for this order
                       </div>
                     </div>
                   )}

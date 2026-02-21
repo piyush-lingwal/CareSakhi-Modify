@@ -1,76 +1,62 @@
-import React, { useState } from 'react';
-import { Wallet as WalletIcon, Plus, Minus, CreditCard, Gift, TrendingUp, History } from 'lucide-react';
+import { useState } from 'react';
+import { Wallet as WalletIcon, Plus, Minus, Gift, TrendingUp, History } from 'lucide-react';
+import { useWallet } from '../hooks/useWallet';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const Wallet = () => {
-  const [balance, setBalance] = useState(250.00);
+  const { user } = useAuth();
+  const { wallet, transactions, loading, addMoney } = useWallet();
   const [amount, setAmount] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [adding, setAdding] = useState(false);
 
-  const transactions = [
-    {
-      id: 1,
-      type: 'credit',
-      amount: 50.00,
-      description: 'Cashback from purchase',
-      date: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      type: 'debit',
-      amount: 32.00,
-      description: 'Purchase - ComfortMax Brief',
-      date: '2024-01-14',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      type: 'credit',
-      amount: 100.00,
-      description: 'Wallet top-up',
-      date: '2024-01-12',
-      status: 'completed'
-    },
-    {
-      id: 4,
-      type: 'credit',
-      amount: 25.00,
-      description: 'Referral bonus',
-      date: '2024-01-10',
-      status: 'completed'
-    }
-  ];
+  const handleAddMoney = async () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) return;
+    setAdding(true);
+    await addMoney(amt);
+    setAmount('');
+    setAdding(false);
+  };
+
+  // Compute monthly stats from transactions (moved before early returns to avoid hooks issues)
+  const now = new Date();
+  const thisMonth = transactions.filter(t => {
+    const d = new Date(t.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const monthEarned = thisMonth.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
+  const monthSpent = thisMonth.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-5xl mb-4">🔒</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Login Required</h2>
+          <p className="text-gray-600 mb-6">Please log in to access your wallet</p>
+          <Link to="/login" className="bg-pink-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-pink-700 transition-colors">Log In</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600" />
+      </div>
+    );
+  }
+
+
 
   const offers = [
-    {
-      id: 1,
-      title: 'First Purchase Bonus',
-      description: 'Get ₹50 cashback on your first purchase above ₹500',
-      cashback: 50,
-      validity: '31 Jan 2024'
-    },
-    {
-      id: 2,
-      title: 'Refer & Earn',
-      description: 'Earn ₹25 for every friend you refer',
-      cashback: 25,
-      validity: 'Ongoing'
-    },
-    {
-      id: 3,
-      title: 'Monthly Subscription',
-      description: 'Get 10% cashback on subscription orders',
-      cashback: '10%',
-      validity: 'Monthly'
-    }
+    { id: 1, title: 'First Purchase Bonus', description: 'Get ₹50 cashback on your first purchase above ₹500', cashback: 50, validity: 'Ongoing' },
+    { id: 2, title: 'Refer & Earn', description: 'Earn ₹25 for every friend you refer', cashback: 25, validity: 'Ongoing' },
+    { id: 3, title: 'Monthly Subscription', description: 'Get 10% cashback on subscription orders', cashback: '10%', validity: 'Monthly' }
   ];
-
-  const handleAddMoney = () => {
-    if (amount && parseFloat(amount) > 0) {
-      setBalance(prev => prev + parseFloat(amount));
-      setAmount('');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -90,14 +76,15 @@ const Wallet = () => {
                   <WalletIcon className="w-8 h-8" />
                   <h2 className="text-2xl font-semibold">Wallet Balance</h2>
                 </div>
-                <div className="text-4xl font-bold mb-2">₹{balance.toFixed(2)}</div>
+                <div className="text-4xl font-bold mb-2">₹{wallet.balance.toFixed(2)}</div>
                 <p className="text-pink-100">Available for purchases</p>
+                {wallet.coins > 0 && <p className="text-pink-200 text-sm mt-1">🪙 {wallet.coins} coins</p>}
               </div>
               <div className="text-right">
                 <div className="bg-white bg-opacity-20 rounded-lg p-4">
                   <TrendingUp className="w-8 h-8 mb-2" />
                   <div className="text-sm">This Month</div>
-                  <div className="text-lg font-semibold">+₹125</div>
+                  <div className="text-lg font-semibold">+₹{monthEarned}</div>
                 </div>
               </div>
             </div>
@@ -131,9 +118,10 @@ const Wallet = () => {
                 </div>
                 <button
                   onClick={handleAddMoney}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  disabled={adding}
+                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
-                  Add Money
+                  {adding ? 'Adding...' : 'Add Money'}
                 </button>
               </div>
             </div>
@@ -174,11 +162,10 @@ const Wallet = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
-                        activeTab === tab.id
-                          ? 'border-pink-500 text-pink-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
-                      }`}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${activeTab === tab.id
+                        ? 'border-pink-500 text-pink-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
                     >
                       <IconComponent className="w-4 h-4" />
                       <span>{tab.name}</span>
@@ -192,15 +179,15 @@ const Wallet = () => {
               {activeTab === 'overview' && (
                 <div className="grid md:grid-cols-3 gap-6">
                   <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6">
-                    <div className="text-green-600 text-2xl font-bold">₹{balance.toFixed(2)}</div>
+                    <div className="text-green-600 text-2xl font-bold">₹{wallet.balance.toFixed(2)}</div>
                     <div className="text-green-700 font-medium">Current Balance</div>
                   </div>
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6">
-                    <div className="text-blue-600 text-2xl font-bold">₹125</div>
+                    <div className="text-blue-600 text-2xl font-bold">₹{monthEarned}</div>
                     <div className="text-blue-700 font-medium">This Month Earned</div>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6">
-                    <div className="text-purple-600 text-2xl font-bold">₹87</div>
+                    <div className="text-purple-600 text-2xl font-bold">₹{monthSpent}</div>
                     <div className="text-purple-700 font-medium">This Month Spent</div>
                   </div>
                 </div>
@@ -209,30 +196,32 @@ const Wallet = () => {
               {activeTab === 'transactions' && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800">Recent Transactions</h3>
-                  {transactions.map(transaction => (
-                    <div key={transaction.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-2 rounded-full ${
-                          transaction.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
-                        }`}>
-                          {transaction.type === 'credit' ? (
-                            <Plus className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Minus className="w-4 h-4 text-red-600" />
-                          )}
+                  {transactions.length === 0 ? (
+                    <div className="py-12 text-center text-gray-400">No transactions yet</div>
+                  ) : (
+                    transactions.map(transaction => (
+                      <div key={transaction.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className={`p-2 rounded-full ${transaction.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
+                            }`}>
+                            {transaction.type === 'credit' ? (
+                              <Plus className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Minus className="w-4 h-4 text-red-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">{transaction.description}</div>
+                            <div className="text-sm text-gray-500">{new Date(transaction.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-800">{transaction.description}</div>
-                          <div className="text-sm text-gray-500">{transaction.date}</div>
+                        <div className={`font-semibold ${transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount.toFixed(2)}
                         </div>
                       </div>
-                      <div className={`font-semibold ${
-                        transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount.toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
 
@@ -244,15 +233,12 @@ const Wallet = () => {
                       <div className="flex justify-between items-start mb-3">
                         <h4 className="text-lg font-semibold text-gray-800">{offer.title}</h4>
                         <span className="bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-sm font-medium">
-                          ₹{offer.cashback}
+                          {typeof offer.cashback === 'number' ? `₹${offer.cashback}` : offer.cashback}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-3">{offer.description}</p>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Valid till: {offer.validity}</span>
-                        <button className="bg-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-pink-700 transition-colors">
-                          Claim Now
-                        </button>
+                        <span className="text-sm text-gray-500">Valid: {offer.validity}</span>
                       </div>
                     </div>
                   ))}

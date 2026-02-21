@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ShoppingCart, User, Download } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -7,9 +7,14 @@ import { useAuth } from '../context/AuthContext';
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { state } = useCart();
+  const { itemCount } = useCart();
   const { user, logout } = useAuth();
   const location = useLocation();
+
+  // Auto-close mobile menu on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -19,7 +24,7 @@ const Header = () => {
     { name: 'Blog', href: '/blog' }
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white bg-opacity-95 backdrop-blur-md shadow-md z-50 border-b border-gray-100 h-20">
@@ -71,9 +76,9 @@ const Header = () => {
 
             <Link to="/cart" aria-label="Cart" className="relative p-2 text-gray-700 hover:text-pink-600 transition-colors rounded-full hover:bg-pink-50">
               <ShoppingCart className="w-5 h-5" />
-              {state.itemCount > 0 && (
+              {itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                  {state.itemCount}
+                  {itemCount}
                 </span>
               )}
             </Link>

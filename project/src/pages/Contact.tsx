@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, MessageCircle, HelpCircle, Truck } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, MessageCircle, HelpCircle, Truck, CheckCircle } from 'lucide-react';
+import { useContactSubmissions } from '../hooks/useContactSubmissions';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -8,6 +9,7 @@ const Contact = () => {
     subject: '',
     message: ''
   });
+  const { submitContact, submitting, submitted, error, reset } = useContactSubmissions();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -16,12 +18,12 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', formData);
-    // Reset form
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    const success = await submitContact(formData);
+    if (success) {
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    }
   };
 
   const contactMethods = [
@@ -29,15 +31,15 @@ const Contact = () => {
       icon: Mail,
       title: 'Email Us',
       description: 'Send us an email and we\'ll respond within 24 hours',
-      contact: 'hello@wecareplus.com',
-      action: 'mailto:hello@wecareplus.com'
+      contact: 'caresakhi06@gmail.com',
+      action: 'mailto:caresakhi06@gmail.com'
     },
     {
       icon: Phone,
       title: 'Call Us',
       description: 'Speak with our customer service team',
-      contact: '1-800-4392-39',
-      action: 'tel:1-800-932-2731'
+      contact: '86304-73112',
+      action: 'tel:86304-73112'
     },
     {
       icon: MessageCircle,
@@ -89,7 +91,7 @@ const Contact = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">How Can We Help?</h2>
-            
+
             <div className="grid md:grid-cols-3 gap-8 mb-16">
               {contactMethods.map((method, index) => {
                 const IconComponent = method.icon;
@@ -122,89 +124,111 @@ const Contact = () => {
               {/* Contact Form */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
                 <h3 className="text-2xl font-bold text-gray-800 mb-6">Send Us a Message</h3>
-                
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name *
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Your full name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject *
-                    </label>
-                    <select
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                {submitted ? (
+                  <div className="text-center py-12">
+                    <CheckCircle className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+                    <h4 className="text-xl font-semibold text-gray-800 mb-2">Message Sent!</h4>
+                    <p className="text-gray-600 mb-6">Thank you for reaching out. We'll get back to you within 24 hours.</p>
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
                     >
-                      <option value="">Select a subject</option>
-                      <option value="product-question">Product Question</option>
-                      <option value="order-support">Order Support</option>
-                      <option value="shipping">Shipping & Returns</option>
-                      <option value="feedback">Feedback</option>
-                      <option value="other">Other</option>
-                    </select>
+                      Send Another Message
+                    </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Your full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="your@email.com"
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Message *
-                    </label>
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      required
-                      rows={6}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="Tell us how we can help you..."
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Subject *
+                      </label>
+                      <select
+                        name="subject"
+                        value={formData.subject}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Select a subject</option>
+                        <option value="product-question">Product Question</option>
+                        <option value="order-support">Order Support</option>
+                        <option value="shipping">Shipping & Returns</option>
+                        <option value="feedback">Feedback</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-emerald-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <Send className="w-5 h-5" />
-                    <span>Send Message</span>
-                  </button>
-                </form>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Message *
+                      </label>
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        required
+                        rows={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="Tell us how we can help you..."
+                      />
+                    </div>
+
+                    {error && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-emerald-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-5 h-5" />
+                      <span>{submitting ? 'Sending...' : 'Send Message'}</span>
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* Contact Info */}
               <div className="space-y-8">
                 <div className="bg-white rounded-2xl shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-800 mb-6">Contact Information</h3>
-                  
+
                   <div className="space-y-6">
                     <div className="flex items-start space-x-4">
                       <MapPin className="w-6 h-6 text-emerald-600 mt-1" />
@@ -246,7 +270,7 @@ const Contact = () => {
                 {/* Support Topics */}
                 <div className="bg-white rounded-2xl shadow-lg p-8">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Common Support Topics</h3>
-                  
+
                   <div className="space-y-4">
                     {supportTopics.map((topic, index) => {
                       const IconComponent = topic.icon;

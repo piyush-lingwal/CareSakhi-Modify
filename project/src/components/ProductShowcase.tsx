@@ -1,233 +1,257 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ShoppingCart, Heart, Info } from 'lucide-react';
+import { Star, ShoppingCart, Heart, ArrowRight, Sparkles, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useProducts, useCategories, type Product } from '../hooks/useProducts';
 
 const ProductShowcase = () => {
   const [activeCategory, setActiveCategory] = useState('all');
-  const [hoveredProduct, setHoveredProduct] = useState(null);
+  const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [quickAddedId, setQuickAddedId] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const { addItem } = useCart();
+  const { products: allProducts } = useProducts();
+  const dbCategories = useCategories();
 
-  const categories = [
-    { id: 'all', name: 'All Products' },
-    { id: 'cups', name: 'Menstrual Cups' },
-    { id: 'underwear', name: 'Reusable Sanitary Pads' },
-    { id: 'accessories', name: 'Accessories' },
-  ];
+  useEffect(() => { setMounted(true); }, []);
 
-  const products = [
-    {
-      id: 1,
-      name: 'EcoFlow Cup',
-      category: 'cups',
-      price: 499,
-      originalPrice: 699,
-      rating: 4.8,
-      reviews: 1234,
-      image: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSHhhLw8RkyPjF-nGtd52lM0y8XgofEPxnNKOiGgQY-Wort52TXMqaIoqfNV08U1PXKJyQmJWVGJr5lzPgmemZe9n8bIAtXMiOnvChkuNaeufLpslpLPRFU4w',
-      features: ['12hr Protection', 'Medical Grade Silicone', '10 Year Lifespan'],
-      sizes: ['Small', 'Medium', 'Large'],
-      colors: ['Clear', 'Pink', 'Purple']
-    },
-    {
-      id: 2,
-      name: 'Reusable Sanitary Pads',
-      category: 'underwear',
-      price: 259,
-      originalPrice: 399,
-      rating: 4.9,
-      reviews: 892,
-      image: 'https://5.imimg.com/data5/SELLER/Default/2024/1/377286315/GV/IE/YY/78215961/4-piece-pink-reusable-pads.jpg',
-      features: ['Ultra Absorbent', 'Leak-Proof', 'Machine Washable'],
-      sizes: ['XS', 'S', 'M', 'L', 'XL'],
-      colors: ['Black', 'Nude', 'Navy']
-    },
-    {
-      id: 3,
-      name: 'Travel Kit Pro',
-      category: 'accessories',
-      price: 999,
-      originalPrice: 1199,
-      rating: 4.7,
-      reviews: 456,
-      image: '/travel kit.png',
-      features: ['Sterilizer Included', 'Compact Design', 'Travel Friendly'],
-      sizes: ['One Size'],
-      colors: ['Pink', 'Blue', 'Green']
-    },
-    {
-      id: 4,
-      name: 'PureFlex Cup',
-      category: 'cups',
-      price: 399,
-      originalPrice: 699,
-      rating: 4.9,
-      reviews: 2156,
-      image: 'https://m.media-amazon.com/images/I/71qwVrnL2mL._UF1000,1000_QL80_.jpg',
-      features: ['Extra Soft', 'Easy Removal', 'Platinum Silicone'],
-      sizes: ['Small', 'Medium', 'Large'],
-      colors: ['Clear', 'Teal', 'Rose']
-    }
-  ];
+  // Featured products for the home page
+  const featured = allProducts.filter(p => p.isBestseller || p.isNew || p.originalPrice).slice(0, 12);
 
-  const filteredProducts = activeCategory === 'all' 
-    ? products 
-    : products.filter(product => product.category === activeCategory);
+  const isFiltered = activeCategory !== 'all';
 
-  const handleQuickAdd = (product) => {
+  const displayProducts = isFiltered
+    ? featured.filter(p => p.category === activeCategory)
+    : featured;
+
+  // Split products into two rows for the marquee
+  const half = Math.ceil(featured.length / 2);
+  const row1 = featured.slice(0, half);
+  const row2 = featured.slice(half);
+
+  // Only show categories that exist in featured products
+  const featuredCatIds = ['all', ...new Set(featured.map(p => p.category))];
+  const allCategories = [{ id: 'all', name: 'All Products' }, ...dbCategories];
+  const categories = allCategories.filter(c => featuredCatIds.includes(c.id));
+
+  const handleQuickAdd = (product: Product) => {
+    const size = product.sizes?.[0] || '';
+    const color = product.colors?.[0] || '';
     addItem({
-      id: product.id,
+      id: `${product.id}-${size}-${color}`,
+      productId: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
       quantity: 1,
-      size: product.sizes[0],
-      color: product.colors[0]
+      size,
+      color
     });
+    setQuickAddedId(product.id);
+    setTimeout(() => setQuickAddedId(null), 1500);
   };
 
-  const handleAddToCart = (product) => {
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-      size: product.sizes[0],
-      color: product.colors[0]
-    });
+  const toggleWishlist = (id: number) => {
+    setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const getDiscountPercent = (price: number, original?: number) => {
+    if (!original) return 0;
+    return Math.round(((original - price) / original) * 100);
+  };
+
+  // ─── Product Card (reusable) ───
+  const ProductCard = ({ product, index = 0, compact = false }: { product: typeof allProducts[0]; index?: number; compact?: boolean }) => {
+    const discount = getDiscountPercent(product.price, product.originalPrice);
+    const isWished = wishlist.includes(product.id);
+    const justAdded = quickAddedId === product.id;
+
+    return (
+      <div
+        className={`rounded-2xl p-[2px] bg-transparent hover:bg-gradient-to-br hover:from-pink-400 hover:via-purple-400 hover:to-fuchsia-400 transition-all duration-500 ${compact ? 'w-[240px] sm:w-[280px] flex-shrink-0' : ''}`}
+        style={{ animationDelay: `${index * 80}ms` }}
+        onMouseEnter={compact ? undefined : () => setHoveredProduct(product.id)}
+        onMouseLeave={compact ? undefined : () => setHoveredProduct(null)}
+      >
+        <div
+          className={`group bg-white rounded-[14px] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 h-full`}
+        >
+          {/* Image */}
+          <div className={`relative overflow-hidden bg-gray-50 ${compact ? 'h-[220px]' : 'aspect-square'}`}>
+            <Link to={`/products/${product.id}`}>
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+            </Link>
+
+            {/* Badges */}
+            <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+              {discount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                  -{discount}%
+                </span>
+              )}
+              {product.isNew && (
+                <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                  NEW
+                </span>
+              )}
+              {product.isBestseller && (
+                <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                  ★ BEST
+                </span>
+              )}
+            </div>
+
+            {/* Wishlist — CSS-only visibility for marquee cards */}
+            <button
+              onClick={() => toggleWishlist(product.id)}
+              className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm ${isWished ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'
+                } ${compact
+                  ? (isWished ? 'opacity-100 scale-100' : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100')
+                  : (hoveredProduct === product.id || isWished ? 'opacity-100 scale-100' : 'opacity-0 scale-75')
+                }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isWished ? 'fill-current' : ''}`} />
+            </button>
+
+            {/* Quick Add — CSS-only visibility for marquee cards */}
+            <div className={`absolute bottom-0 left-0 right-0 p-2.5 transition-all duration-300 ${compact
+              ? 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'
+              : (hoveredProduct === product.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4')
+              }`}>
+              <button
+                type="button"
+                onClick={() => handleQuickAdd(product)}
+                className={`w-full py-2 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-300 shadow-lg ${justAdded ? 'bg-emerald-500 text-white' : 'bg-pink-600 text-white hover:bg-pink-700'
+                  }`}
+              >
+                {justAdded ? <><Check className="w-3.5 h-3.5" /> Added!</> : <><ShoppingCart className="w-3.5 h-3.5" /> Quick Add</>}
+              </button>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className={`${compact ? 'p-3' : 'p-4'}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-pink-500 mb-0.5 block">
+              {allCategories.find(c => c.id === product.category)?.name || product.category}
+            </span>
+            <Link to={`/products/${product.id}`} className="block">
+              <h3 className={`font-bold text-gray-800 group-hover:text-pink-600 transition-colors leading-snug mb-1.5 ${compact ? 'text-sm' : 'text-[15px]'}`}>
+                {product.name}
+              </h3>
+            </Link>
+
+            {/* Rating */}
+            <div className="flex items-center gap-1 mb-2">
+              <div className="flex gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} />
+                ))}
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium">({product.reviews})</span>
+            </div>
+
+            {/* Price */}
+            <div className="flex items-center gap-2">
+              <span className={`font-extrabold text-gray-900 ${compact ? 'text-lg' : 'text-xl'}`}>₹{product.price}</span>
+              {product.originalPrice && (
+                <span className="text-xs text-gray-400 line-through">₹{product.originalPrice}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Marquee Row ───
+  const MarqueeRow = ({ items, direction }: { items: typeof allProducts; direction: 'left' | 'right' }) => {
+    // Duplicate items for seamless loop
+    const duped = [...items, ...items, ...items];
+    return (
+      <div className="overflow-hidden py-2 [&:hover>div]:[animation-play-state:paused]">
+        <div
+          className={`flex gap-4 ${direction === 'left' ? 'animate-marquee-left' : 'animate-marquee-right'
+            }`}
+          style={{ width: 'max-content' }}
+        >
+          {duped.map((product, i) => (
+            <ProductCard key={`${product.id}-${i}`} product={product} compact />
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <section id="products" className="py-16 sm:py-20 bg-gray-50">
-      <div className="container mx-auto px-4">
-        {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">
-              Revolutionary Products
+    <section id="products" className="py-14 sm:py-20 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-pink-50/50 blur-3xl pointer-events-none" />
+
+      <div className="container mx-auto px-4 relative z-10">
+
+        {/* ─── Section Header ─── */}
+        <div className={`text-center mb-10 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className="inline-flex items-center gap-2 bg-pink-50 border border-pink-100 rounded-full px-4 py-1.5 mb-5 text-pink-600 text-sm font-semibold">
+            <Sparkles className="w-4 h-4" />
+            Handpicked For You
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <span className="bg-gradient-to-r from-pink-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
+              Our Bestsellers
             </span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Discover our premium collection of sustainable menstrual products, 
-            designed for comfort, protection, and environmental responsibility.
+          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            Premium, eco-friendly products loved by thousands — designed for comfort, protection, and the planet.
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="mb-12">
-          <div className="flex space-x-2 pb-4 sm:justify-center overflow-x-auto scrollbar-hide">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setActiveCategory(category.id)}
-                className={`px-5 py-3 rounded-full font-semibold transition-all duration-300 whitespace-nowrap text-sm sm:text-base ₹{
-                  activeCategory === category.id
-                    ? 'bg-pink-600 text-white shadow-lg'
-                    : 'bg-white text-gray-600 hover:text-pink-600 hover:bg-pink-50 shadow-sm'
+        {/* ─── Category Pills ─── */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-8 sm:mb-10 sm:justify-center px-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-5 py-2.5 rounded-full font-semibold transition-all duration-300 whitespace-nowrap text-sm border ${activeCategory === cat.id
+                ? 'bg-pink-600 text-white border-pink-600 shadow-lg shadow-pink-200/40'
+                : 'bg-white text-gray-600 border-gray-200 hover:text-pink-600 hover:border-pink-300 shadow-sm'
                 }`}
-              >
-                {category.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2"
-              onMouseEnter={() => setHoveredProduct(product.id)}
-              onMouseLeave={() => setHoveredProduct(null)}
             >
-              {/* Product Image */}
-              <div className="relative overflow-hidden bg-gray-100 aspect-square">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                
-                {product.originalPrice > product.price && (
-                  <div className="absolute top-3 left-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                    Save ₹{product.originalPrice - product.price}
-                  </div>
-                )}
-
-                <div className={`absolute top-3 right-3 flex flex-col space-y-2 transition-all duration-300 ₹{
-                  hoveredProduct === product.id ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                }`}>
-                  <button className="bg-white p-2 rounded-full shadow-lg hover:bg-pink-50 text-gray-600 hover:text-pink-600 transition-colors">
-                    <Heart className="w-5 h-5" />
-                  </button>
-                  <button className="bg-white p-2 rounded-full shadow-lg hover:bg-pink-50 text-gray-600 hover:text-pink-600 transition-colors">
-                    <Info className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className={`absolute bottom-3 left-3 right-3 transition-all duration-300 ₹{
-                  hoveredProduct === product.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                }`}>
-                  <button 
-                    onClick={() => handleQuickAdd(product)}
-                    className="w-full bg-pink-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-pink-700 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Quick Add</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Product Info */}
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-800 group-hover:text-pink-700 transition-colors pr-2">
-                    {product.name}
-                  </h3>
-                  <div className="flex items-center space-x-1 flex-shrink-0">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm text-gray-600">{product.rating}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-500 mb-4">
-                  {product.reviews} reviews
-                </p>
-
-                <div className="flex items-center space-x-2 mb-4">
-                  <span className="text-2xl font-bold text-gray-800">
-                    ₹{product.price}
-                  </span>
-                  {product.originalPrice > product.price && (
-                    <span className="text-lg text-gray-400 line-through">
-                      ₹{product.originalPrice}
-                    </span>
-                  )}
-                </div>
-
-                <button 
-                  onClick={() => handleAddToCart(product)}
-                  className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-pink-600 hover:text-white transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  <span>Add to Cart</span>
-                </button>
-              </div>
-            </div>
+              {cat.name}
+            </button>
           ))}
         </div>
 
-        {/* View All Products */}
-        <div className="text-center mt-12">
-          <Link 
+        {/* ─── Products Display ─── */}
+        {isFiltered ? (
+          /* FILTERED: normal responsive grid */
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {displayProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} />
+            ))}
+          </div>
+        ) : (
+          /* UNFILTERED: two marquee rows scrolling in opposite directions — all screens */
+          <div className="space-y-3 sm:space-y-4">
+            <MarqueeRow items={row1} direction="left" />
+            <MarqueeRow items={row2} direction="right" />
+          </div>
+        )}
+
+        {/* ─── View All CTA ─── */}
+        <div className={`text-center mt-12 sm:mt-14 transition-all duration-1000 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+          <Link
             to="/products"
-            className="inline-block bg-gradient-to-r from-pink-600 to-teal-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg transition-all duration-300 hover:scale-105 transform"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:shadow-xl hover:shadow-pink-200/40 transition-all duration-300 hover:scale-[1.03] transform"
           >
-            View All Products
+            Explore All Products
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
+          <p className="text-sm text-gray-400 mt-3">{allProducts.length}+ products across {allCategories.length - 1} categories</p>
         </div>
       </div>
     </section>

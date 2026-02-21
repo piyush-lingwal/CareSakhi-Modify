@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { CartProvider, useCart } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import { useEffect } from 'react';
 
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -42,6 +44,12 @@ import EducationCare from './pages/EducationCare';
 
 const HIDE_CHROME_PAGES = ['/login', '/register'];
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+};
+
 const AppContent = () => {
   const { successMessage, setSuccessMessage } = useCart();
   const location = useLocation();
@@ -49,6 +57,7 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      <ScrollToTop />
       {!isAuthPage && <Header />}
       {successMessage && <SuccessAlert message={successMessage} onClose={() => setSuccessMessage(null)} />}
       <main className={`flex-1 ${isAuthPage ? '' : 'pt-20'}`}>
@@ -95,13 +104,15 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </CartProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </CartProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

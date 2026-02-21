@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Leaf, Shield, Star, Award, Users } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const Hero = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  
+
   const heroContent = [
     {
       title: "Your Trusted Period Companion",
@@ -29,7 +29,7 @@ const Hero = () => {
       description: "Advanced technology meets traditional care. Experience the future of menstrual health with our award-winning products.",
       cta: "Get Started",
       ctaSecondary: "Watch Demo",
-      stats: {protection: "12 Hours", comfort: "99%", quality: "Medical Grade" }
+      stats: { protection: "12 Hours", comfort: "99%", quality: "Medical Grade" }
     }
   ];
 
@@ -50,28 +50,28 @@ const Hero = () => {
   const currentContent = heroContent[currentSlide];
 
   return (
-    <section className="relative h-[calc(100vh-5rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <section className="relative min-h-[85vh] sm:h-[calc(100vh-5rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
       {/* Background elements */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute w-64 h-64 bg-gradient-to-r from-pink-300 to-purple-300 rounded-full blur-3xl animate-pulse top-20 left-10"></div>
         <div className="absolute w-48 h-48 bg-gradient-to-r from-purple-300 to-blue-300 rounded-full blur-3xl animate-pulse bottom-20 right-10" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 relative z-10">
+      <div className="container mx-auto px-4 py-6 sm:py-8 relative z-10">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 items-center">
             {/* Content Section */}
-            <div className="text-center space-y-4 md:space-y-6">
-              
+            <div className="text-center space-y-3 md:space-y-6">
+
               {/* Dynamic Title */}
               <div className="space-y-2 md:space-y-3">
-                <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight transition-all duration-1000 ${isVisible ? 'animate-fade-in' : 'opacity-0 translate-y-10'}`}>
+                <h1 className={`text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight transition-all duration-1000 ${isVisible ? 'animate-fade-in' : 'opacity-0 translate-y-10'}`}>
                   <span className="bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 bg-clip-text text-transparent bg-300% animate-gradient">
                     {currentContent.title}
                   </span>
                 </h1>
-                
-                <p className={`text-lg md:text-xl font-semibold text-gray-700 transition-all duration-1000 delay-300 ${isVisible ? 'animate-slide-up' : 'opacity-0 translate-y-10'}`}>
+
+                <p className={`text-base md:text-xl font-semibold text-gray-700 transition-all duration-1000 delay-300 ${isVisible ? 'animate-slide-up' : 'opacity-0 translate-y-10'}`}>
                   {currentContent.subtitle}
                 </p>
               </div>
@@ -96,7 +96,7 @@ const Hero = () => {
                 </div>
               </div>
 
-              <p className={`text-base text-gray-600 max-w-2xl mx-auto leading-relaxed transition-all duration-1000 delay-500 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+              <p className={`text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed transition-all duration-1000 delay-500 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
                 {currentContent.description}
               </p>
 
@@ -108,7 +108,7 @@ const Hero = () => {
                 >
                   {currentContent.cta}
                 </Link>
-                
+
                 <Link
                   to="/period-tracker"
                   className="group border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-full font-bold text-lg hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-500 hover:shadow-lg hover:scale-105 inline-flex items-center justify-center"
@@ -118,10 +118,10 @@ const Hero = () => {
               </div>
 
               {/* Dynamic Stats */}
-              <div className={`flex flex-wrap justify-center gap-6 pt-4 transition-all duration-1000 delay-900 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+              <div className={`flex flex-wrap justify-center gap-4 sm:gap-6 pt-3 sm:pt-4 transition-all duration-1000 delay-900 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
                 {Object.entries(currentContent.stats).map(([key, value]) => (
                   <div key={key} className="text-center group hover:scale-110 transition-transform duration-300">
-                    <div className="text-2xl lg:text-3xl font-bold text-pink-600 mb-1 group-hover:text-purple-600 transition-colors">
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-pink-600 mb-0.5 group-hover:text-purple-600 transition-colors">
                       {value}
                     </div>
                     <div className="text-gray-600 font-medium capitalize text-sm">
@@ -132,16 +132,15 @@ const Hero = () => {
               </div>
 
               {/* Slide Indicators */}
-              <div className="flex justify-center space-x-3 pt-4 lg:pt-6">
+              <div className="flex justify-center items-center gap-3 pt-3 lg:pt-6">
                 {heroContent.map((_, index) => (
-                  <button
+                  <div
                     key={index}
                     onClick={() => setCurrentSlide(index)}
-                    className={`transition-all duration-500 hover:scale-125 ${
-                      index === currentSlide
-                        ? 'w-8 h-2 bg-gradient-to-r from-pink-600 to-purple-600 rounded-full shadow-lg'
-                        : 'w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400'
-                    }`}
+                    className={`w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-500 ${index === currentSlide
+                      ? 'bg-pink-600 scale-[1.4] shadow-lg'
+                      : 'bg-gray-300 hover:bg-gray-400 hover:scale-125'
+                      }`}
                   />
                 ))}
               </div>

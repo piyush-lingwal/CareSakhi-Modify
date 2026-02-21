@@ -72,7 +72,7 @@ const Login = () => {
             >
               {rotatingWords[textIndex]}
             </span>
-            Partner
+            Starts Here
           </h1>
 
           <p className="text-lg text-gray-400 leading-relaxed max-w-sm mx-auto mb-10 font-light tracking-wide">

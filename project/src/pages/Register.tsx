@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, ArrowLeft, Check, Mail, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
@@ -14,9 +14,18 @@ const Register = () => {
   const [textIndex, setTextIndex] = useState(0);
   const [textVisible, setTextVisible] = useState(true);
 
+  // OTP verification state
+  const [showOtpStep, setShowOtpStep] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const rotatingWords = ['Wellness Journey', 'Healthier Future', 'Eco Revolution', 'Better Period Care', 'Sustainable Life'];
 
-  const { register, isLoading } = useAuth();
+  const { register, verifyOtp, resendOtp } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => { setMounted(true); }, []);
@@ -32,6 +41,13 @@ const Register = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -46,9 +62,85 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
     if (!formData.terms) { setError('Please accept the terms'); return; }
 
-    const success = await register(formData.name, formData.email, formData.password);
-    if (success) navigate('/account');
-    else setError('Registration failed. Email may already be in use.');
+    setSubmitting(true);
+    const result = await register(formData.name, formData.email, formData.password);
+    if (result === 'success') {
+      // New user created, show OTP verification step
+      setShowOtpStep(true);
+      setResendCooldown(60);
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } else if (result === 'exists') {
+      // User already registered but unconfirmed — resend OTP and show verification
+      await resendOtp(formData.email);
+      setShowOtpStep(true);
+      setResendCooldown(60);
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } else {
+      setError('Registration failed. Please try again.');
+    }
+    setSubmitting(false);
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only digits
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1); // Take only last character
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = [...otp];
+    for (let i = 0; i < pasted.length; i++) {
+      newOtp[i] = pasted[i];
+    }
+    setOtp(newOtp);
+    // Focus last filled or next empty
+    const focusIndex = Math.min(pasted.length, 5);
+    inputRefs.current[focusIndex]?.focus();
+  };
+
+  const handleVerifyOtp = async () => {
+    const code = otp.join('');
+    if (code.length !== 6) { setOtpError('Please enter the full 6-digit code'); return; }
+
+    setOtpError('');
+    setVerifying(true);
+    const success = await verifyOtp(formData.email, code);
+    setVerifying(false);
+
+    if (success) {
+      navigate('/account');
+    } else {
+      setOtpError('Invalid or expired code. Please try again.');
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    const success = await resendOtp(formData.email);
+    if (success) {
+      setResendCooldown(60);
+      setOtpError('');
+    } else {
+      setOtpError('Failed to resend. Please try again later.');
+    }
   };
 
   const getStrength = () => {
@@ -115,106 +207,192 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Right: Form */}
+      {/* Right: Form / OTP */}
       <div className={`w-full lg:w-[55%] flex items-center justify-center relative z-10 p-6 transition-all duration-1000 delay-200 ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
         <div className="w-full max-w-lg">
           <div className="lg:hidden text-center mb-5">
             <img src="/navbar logo2.png" alt="CareSakhi" className="h-14 w-auto mx-auto" />
           </div>
 
-          <h2 className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: "'DM Serif Display', serif" }}>Create account</h2>
-          <p className="text-gray-400 text-sm mb-6 font-light tracking-wide">Join CareSakhi today</p>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
-              <p className="text-sm text-red-600 font-medium">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Full Name</label>
-                <input type="text" name="name" value={formData.name} onChange={handleInputChange} required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200"
-                  placeholder="John Doe" />
+          {/* ─── OTP VERIFICATION STEP ─── */}
+          {showOtpStep ? (
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-50 rounded-2xl mb-6">
+                <Mail className="w-8 h-8 text-pink-500" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
-                <input type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200"
-                  placeholder="you@example.com" />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
-                <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleInputChange} required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200 pr-11"
-                    placeholder="••••••••" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                Verify your email
+              </h2>
+              <p className="text-gray-400 text-sm mb-2 font-light tracking-wide">
+                We sent a 6-digit code to
+              </p>
+              <p className="text-gray-900 font-semibold mb-8">{formData.email}</p>
+
+              {otpError && (
+                <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl">
+                  <p className="text-sm text-red-600 font-medium">{otpError}</p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Confirm</label>
-                <div className="relative">
-                  <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200 pr-11"
-                    placeholder="••••••••" />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            </div>
+              )}
 
-            {formData.password && (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1 flex-1">
-                  {[1, 2, 3].map(level => (
-                    <div key={level} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${strength >= level ? strengthColor : 'bg-gray-200'}`}></div>
-                  ))}
-                </div>
-                <span className="text-xs text-gray-500 font-medium">{strengthLabel}</span>
+              {/* OTP Input Boxes */}
+              <div className="flex justify-center gap-3 mb-8" onPaste={handleOtpPaste}>
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handleOtpChange(i, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(i, e)}
+                    className={`w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 focus:outline-none transition-all duration-200 ${digit
+                      ? 'border-pink-400 bg-pink-50/30 text-gray-900'
+                      : 'border-gray-200 bg-gray-50 text-gray-400'
+                      } focus:border-pink-500 focus:ring-4 focus:ring-pink-100`}
+                  />
+                ))}
               </div>
-            )}
 
-            <label className="flex items-start gap-3 cursor-pointer pt-1">
-              <div className="relative mt-0.5">
-                <input type="checkbox" name="terms" checked={formData.terms} onChange={handleInputChange} className="sr-only peer" />
-                <div className="w-5 h-5 rounded-md border-2 border-gray-300 peer-checked:border-pink-500 peer-checked:bg-pink-500 transition-all duration-200 flex items-center justify-center">
-                  {formData.terms && <Check className="w-3.5 h-3.5 text-white" />}
-                </div>
-              </div>
-              <span className="text-sm text-gray-500">
-                I agree to the{' '}
-                <Link to="/terms-of-service" className="text-pink-500 hover:text-pink-600 font-medium">Terms</Link>
-                {' '}and{' '}
-                <Link to="/privacy-policy" className="text-pink-500 hover:text-pink-600 font-medium">Privacy Policy</Link>
-              </span>
-            </label>
-
-            <button type="submit" disabled={isLoading}
-              className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-pink-200/60 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed group mt-1"
-            >
-              <span className="flex items-center justify-center gap-2">
-                {isLoading ? (
-                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating account...</>
+              {/* Verify Button */}
+              <button
+                onClick={handleVerifyOtp}
+                disabled={verifying || otp.join('').length !== 6}
+                className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-pink-200/60 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+              >
+                {verifying ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Verifying...
+                  </span>
                 ) : (
-                  <>Create Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>
+                  'Verify & Create Account'
                 )}
-              </span>
-            </button>
-          </form>
+              </button>
 
-          <p className="mt-6 text-center text-gray-500 text-sm">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-pink-500 hover:text-pink-600 transition-colors">Sign in</Link>
-          </p>
+              {/* Resend */}
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="text-gray-400">Didn't receive the code?</span>
+                {resendCooldown > 0 ? (
+                  <span className="text-gray-400 font-medium">Resend in {resendCooldown}s</span>
+                ) : (
+                  <button
+                    onClick={handleResend}
+                    className="text-pink-500 hover:text-pink-600 font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    Resend Code
+                  </button>
+                )}
+              </div>
+
+              {/* Change email */}
+              <button
+                onClick={() => { setShowOtpStep(false); setOtp(['', '', '', '', '', '']); setOtpError(''); }}
+                className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition-colors underline"
+              >
+                Use a different email
+              </button>
+            </div>
+          ) : (
+            /* ─── REGISTRATION FORM ─── */
+            <>
+              <h2 className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: "'DM Serif Display', serif" }}>Create account</h2>
+              <p className="text-gray-400 text-sm mb-6 font-light tracking-wide">Join CareSakhi today</p>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                  <p className="text-sm text-red-600 font-medium">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Full Name</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleInputChange} required
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200"
+                      placeholder="John Doe" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} required
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200"
+                      placeholder="you@example.com" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
+                    <div className="relative">
+                      <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleInputChange} required
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200 pr-11"
+                        placeholder="••••••••" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Confirm</label>
+                    <div className="relative">
+                      <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-400 focus:bg-white focus:ring-4 focus:ring-pink-50 transition-all duration-200 pr-11"
+                        placeholder="••••••••" />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {formData.password && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1, 2, 3].map(level => (
+                        <div key={level} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${strength >= level ? strengthColor : 'bg-gray-200'}`}></div>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">{strengthLabel}</span>
+                  </div>
+                )}
+
+                <label className="flex items-start gap-3 cursor-pointer pt-1">
+                  <div className="relative mt-0.5">
+                    <input type="checkbox" name="terms" checked={formData.terms} onChange={handleInputChange} className="sr-only peer" />
+                    <div className="w-5 h-5 rounded-md border-2 border-gray-300 peer-checked:border-pink-500 peer-checked:bg-pink-500 transition-all duration-200 flex items-center justify-center">
+                      {formData.terms && <Check className="w-3.5 h-3.5 text-white" />}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    I agree to the{' '}
+                    <Link to="/terms-of-service" className="text-pink-500 hover:text-pink-600 font-medium">Terms</Link>
+                    {' '}and{' '}
+                    <Link to="/privacy-policy" className="text-pink-500 hover:text-pink-600 font-medium">Privacy Policy</Link>
+                  </span>
+                </label>
+
+                <button type="submit" disabled={submitting}
+                  className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-pink-200/60 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed group mt-1"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    {submitting ? (
+                      <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating account...</>
+                    ) : (
+                      <>Create Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>
+                    )}
+                  </span>
+                </button>
+              </form>
+
+              <p className="mt-6 text-center text-gray-500 text-sm">
+                Already have an account?{' '}
+                <Link to="/login" className="font-semibold text-pink-500 hover:text-pink-600 transition-colors">Sign in</Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

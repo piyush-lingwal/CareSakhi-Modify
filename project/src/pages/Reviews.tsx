@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Star, ThumbsUp, Filter, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Star, ThumbsUp, Search } from 'lucide-react';
 
 const Reviews = () => {
   const [filterRating, setFilterRating] = useState('all');
@@ -84,15 +84,15 @@ const Reviews = () => {
   const filteredReviews = reviews.filter(review => {
     const matchesRating = filterRating === 'all' || review.rating.toString() === filterRating;
     const matchesSearch = review.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         review.review.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         review.product.toLowerCase().includes(searchTerm.toLowerCase());
+      review.review.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      review.product.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesRating && matchesSearch;
   });
 
   const sortedReviews = [...filteredReviews].sort((a, b) => {
     switch (sortBy) {
       case 'oldest':
-        return new Date(a.date) - new Date(b.date);
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
       case 'rating-high':
         return b.rating - a.rating;
       case 'rating-low':
@@ -100,7 +100,7 @@ const Reviews = () => {
       case 'helpful':
         return b.helpful - a.helpful;
       default: // newest
-        return new Date(b.date) - new Date(a.date);
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
     }
   });
 
@@ -136,9 +136,8 @@ const Reviews = () => {
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className={`w-5 h-5 ${
-                          i < Math.floor(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                        }`}
+                        className={`w-5 h-5 ${i < Math.floor(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                          }`}
                       />
                     ))}
                   </div>
@@ -227,7 +226,7 @@ const Reviews = () => {
                         alt={review.name}
                         className="w-12 h-12 rounded-full object-cover"
                       />
-                      
+
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <div>
@@ -246,9 +245,8 @@ const Reviews = () => {
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`w-4 h-4 ${
-                                    i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                  }`}
+                                  className={`w-4 h-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -257,10 +255,10 @@ const Reviews = () => {
                             </p>
                           </div>
                         </div>
-                        
+
                         <h4 className="font-semibold text-gray-800 mb-2">{review.title}</h4>
                         <p className="text-gray-600 leading-relaxed mb-4">{review.review}</p>
-                        
+
                         <div className="flex items-center justify-between">
                           <button className="flex items-center space-x-2 text-gray-500 hover:text-pink-600 transition-colors">
                             <ThumbsUp className="w-4 h-4" />

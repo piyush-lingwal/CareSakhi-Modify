@@ -1,15 +1,15 @@
-import React from 'react';
+// React not needed with JSX transform
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-react';
 
 const Cart = () => {
-  const { state, removeItem, updateQuantity } = useCart();
+  const { items, removeItem, updateQuantity } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const subtotal = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.18; // Example 18% tax
   const total = subtotal + tax;
 
@@ -18,13 +18,13 @@ const Cart = () => {
       navigate('/checkout');
     } else {
       // Redirect to login page, but remember where we came from
-      navigate('/login', { state: { from: '/cart' } });
+      navigate('/login', { state: { from: '/checkout' } });
     }
   };
 
-  if (state.items.length === 0) {
+  if (items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
+      <div className="container mx-auto px-4 py-12 pt-28 text-center">
         <ShoppingCart className="w-24 h-24 mx-auto text-gray-300" />
         <h1 className="text-3xl font-bold mt-6">Your cart is empty</h1>
         <p className="text-gray-600 mt-2">Looks like you haven't added anything to your cart yet.</p>
@@ -43,7 +43,7 @@ const Cart = () => {
           {/* Cart Items */}
           <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
             <div className="space-y-6">
-              {state.items.map(item => (
+              {items.map(item => (
                 <div key={item.id} className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b pb-6 last:border-b-0 last:pb-0">
                   <img src={item.image} alt={item.name} className="w-24 h-24 rounded-lg object-cover flex-shrink-0" />
                   <div className="flex-1 text-center sm:text-left">
